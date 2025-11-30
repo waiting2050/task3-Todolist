@@ -42,7 +42,7 @@ func (s *TodoService) GeTodos(userID uint, pageNum, pageSize int, status, keywor
 	query := dao.DB.Model(&models.Todo{}).Where("user_id = ?", userID)
 
 	if keyword != "" {
-		query = query.Where("title like ? or content like ?", "%" + keyword + "%", "%" + keyword + "%")
+		query = query.Where("title like ? or content like ?", "%"+keyword+"%", "%"+keyword+"%")
 	}
 	if status != "" {
 		statusINt, _ := strconv.Atoi(status)
@@ -76,13 +76,44 @@ func (s *TodoService) UpdateOneTodo(id string, userID uint, status int) error {
 	return nil
 }
 
-func (s *TodoService) UpdateAllTodos()
+func (s *TodoService) UpdateAllTodos(userID uint, status int) error {
+	if err := dao.DB.Model(&models.Todo{}).Where("user_id = ?", userID).Update("status", status).Error; err != nil {
+		return err
+	}
+
+	s.clearCache(userID)
+	return nil
+}
 
 func (s *TodoService) DeleteTodo(id string, userID uint) error {
 	if err := dao.DB.Where("id = ? and user_id = ?", id, userID).Delete(&models.Todo{}).Error; err != nil {
 		return err
 	}
-	
+
 	s.clearCache(userID)
 	return nil
+}
+
+func (s *TodoService) DeleteBatch(userID uint, deleteType string) error {
+	query := dao.DB.Model(&models.Todo{}).Where("user_id = ?", userID)
+	switch deleteType {
+	case "1":
+		query = query.Where("status = ?", 1)
+	case "2":
+		query = query.Where("status = ?", 2)
+	case "3":
+	default:
+		return fmt.Errorf("参数错误")
+	}
+
+	if err := query.Delete(&models.Todo{}).Error; err != nil {
+		return err
+	}
+	s.clearCache(userID)
+	return nil
+}
+
+func (s *TodoService) clearCache(userID uint) {
+	cacheKey := fmt.Sprintf("todo_list_%d", userID)
+	dao.RDB.Del(dao.Ctx, cacheKey)
 }
