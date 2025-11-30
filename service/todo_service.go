@@ -50,7 +50,7 @@ func (s *TodoService) GetTodos(userID uint, pageNum, pageSize int, status, keywo
 	}
 
 	offset := (pageNum - 1) * pageSize
-	if err := query.Count(&total).Limit(pageSize).Offset(offset).Find(&todos).Error; err != nil {
+	if err := query.Order("priority desc").Order("created_at desc").Count(&total).Limit(pageSize).Offset(offset).Find(&todos).Error; err != nil {
 		return nil, 0, err
 	}
 
